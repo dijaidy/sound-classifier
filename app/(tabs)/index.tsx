@@ -1,75 +1,303 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { SheetRefContext } from '@/components/bottomSheetModalRef';
+import { Collapsible } from '@/components/Collapsible';
+import { WifiContext } from '@/components/wifiContext';
+import { db, storage } from '@/firebase/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  AudioModule,
+  setAudioModeAsync
+} from 'expo-audio';
+import * as Notifications from 'expo-notifications';
+import { get, ref, set, update } from 'firebase/database';
+import { ref as sRef, uploadBytesResumable } from 'firebase/storage';
+import React, { ReactElement, useContext, useEffect, useRef, useState } from 'react';
+import Check from '../../components/ui/check.svg';
+import Pencil from '../../components/ui/pencil.svg';
 
-export default function HomeScreen() {
+const trainArr = [678, 658, 857, 955, 237];
+const eventNameArr = ['화재경보', '울음','유리 깨짐', '비명', '현관벨',];
+
+
+export default function TabTwoScreen() {
+  const context = useContext(SheetRefContext);
+  const context2 = useContext(WifiContext);
+  if (!context) {
+  throw new Error('SheetRefContext must be used within a Provider');
+  }
+  if (!context2) {
+  throw new Error('SheetRefContext must be used within a Provider');
+  }
+
+  const { bottomSheetModalRef, localAudioArr, setLocalAudioArr } = context;
+  const { confirmedWifi, setConfirmedWifi } = context2;
+
+  const [wifiChange, setWifiChange] = useState<boolean>(false);
+  const [wifiName, setWifiName] = useState<string>('');
+  const wifiRef = useRef<TextInput>(null);
+  const [sensitivity, setSensitivity] = useState<number>(1);
+  const [eventArr, setEventArr] = useState<ReactElement[]>([]);
+  const [specialTrainArr, setSpecialTrainArr] = useState<string[][]>([[], [], [], [], []]);
+  const [currentTrainNum, setCurrentTrainNum] = useState<number>(-1);
+  const [eventCheckArr, setEventCheckArr] = useState<boolean[]>([false, false, false, false, false,]);
+  const [wifiNeeded, setWifiNeeded] = useState<boolean>(false);
+
+  useEffect(()=>{
+    async function getWifi() {
+      const wifi = await AsyncStorage.getItem("WIFI_BSSID");
+      console.log('wifi:', wifi)
+      if (wifi == null) return;
+
+      const usersRef = ref(db, 'users');
+      const snap = await get(usersRef);
+      if (snap.exists()) {
+        const v = snap.val();
+        if (wifi in v) {
+          setWifiName(wifi);
+          setConfirmedWifi(wifi);
+        }
+      }
+    }
+    getWifi();
+  }, [])
+
+  useEffect(()=>{
+    async function loadSpecialTrain() {
+      const temp = [];
+      const trainRef = ref(db, `users/${confirmedWifi}/trainedData`);
+      const snap = await get(trainRef);
+      if (!snap.exists()){
+        for (let i = 0; i < eventNameArr.length; i++){
+          temp.push([]);
+        }
+      } else{
+        const res = snap.val();
+        for (let i = 0; i < eventNameArr.length; i++){
+          if (!res[eventNameArr[i]]) {
+            temp.push([]);
+            continue;
+          }
+          temp.push(res[eventNameArr[i]])
+        }
+      }
+      setSpecialTrainArr(temp);
+    }
+    loadSpecialTrain();
+  },[eventNameArr, confirmedWifi])
+
+  useEffect(()=>{
+    async function updateData(){
+      const userRef = ref(db, `users/${confirmedWifi}`);
+      const snap = await get(userRef);
+      const userData = snap.val();
+
+      if ('eventCheckArr' in userData){
+        setEventCheckArr(userData['eventCheckArr'])
+      }
+      if ('sensitivity' in userData){
+        setSensitivity(userData['sensitivity']);
+      }
+
+      // Expo Push Token 발급
+      const data: Notifications.ExpoPushToken  = await Notifications.getExpoPushTokenAsync() // iOS=APNs, Android=FCM
+      
+      await set(ref(db, `users/${confirmedWifi}/pushTokens`), data['data']);
+    }
+    updateData();
+  },[confirmedWifi])
+
+  useEffect(() => {
+    (async () => {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) {
+        Alert.alert('Permission to access microphone was denied');
+      }
+
+      setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+        
+      });
+    })();
+  }, []);
+
+
+  useEffect(()=>{
+    const tempArr = [];
+    for (let i = 0; i < eventNameArr.length; i++){
+      tempArr.push(
+        <View key={'event'+i.toString()} style={{display: 'flex', flexDirection: 'row', justifyContent: 'space-between', }}>
+          <Collapsible title={eventNameArr[i]}>
+            <View style={{display: 'flex', flexDirection: 'column', alignItems: 'stretch', alignSelf: 'stretch'}}>
+              <View style={{display: 'flex', flexDirection: 'row', justifyContent: 'space-between', marginTop: 15}}>
+                <Text style={{fontSize: 15,fontFamily: 'JejuGothic', color: '#979797'}}>모델 학습 데이터</Text>
+                <Text style={{fontSize: 15,fontFamily: 'JejuGothic', color: '#979797'}}>{trainArr[i]}</Text>
+              </View>
+              <View style={{display: 'flex', flexDirection: 'row', justifyContent: 'space-between', marginTop: 15, alignItems: 'center'}}>
+                <View style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
+                  <Text style={{fontSize: 15,fontFamily: 'JejuGothic', color: '#979797', marginRight: 10}}>사용자 특화 데이터</Text>
+                  <TouchableOpacity onPress={()=>{
+                    bottomSheetModalRef?.current?.present(); 
+                    setCurrentTrainNum(i);
+                    setLocalAudioArr(specialTrainArr[i]);
+                    }} style={{width:25, display: 'flex', justifyContent: 'center', flexDirection: 'row'}}>
+                    <Text style={{fontFamily: 'JejuGothic', fontSize: 25}}>+</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={{fontSize: 15,fontFamily: 'JejuGothic', color: '#979797'}}>{specialTrainArr.length <= i ? 0 : specialTrainArr[i].length}</Text>
+              </View>
+            </View>
+          </Collapsible>
+          <TouchableOpacity onPress={()=>{setEventCheckArr((prev)=>{
+            const temp = [...prev]
+            temp[i] = !temp[i]
+            return temp
+          })}} style={{borderWidth:3, width: 20, height: 20, borderRadius: 5, borderColor: '#979797', marginLeft: -50, marginTop: 15}}>
+            {eventCheckArr[i] && <Check style={{position: 'absolute', right: -18, top: -20}}/>}
+          </TouchableOpacity>
+        </View>
+      )
+      setEventArr(tempArr);
+    }
+  },[eventCheckArr, specialTrainArr])
+
+
+  useEffect(()=>{
+    async function confirmWifi(wifiName: string) {
+      const usersRef = ref(db, 'users');
+      const snap = await get(usersRef);
+      if (!snap.exists()) {
+        setWifiNeeded(true); 
+        setWifiName(confirmedWifi);
+      } else{
+        const v = snap.val();
+        if (wifiName in v) {
+          setWifiNeeded(false);
+          setConfirmedWifi(wifiName);
+        } else{
+          setWifiNeeded(true); 
+          setWifiName(confirmedWifi);
+        }
+      }
+       
+    }
+    if (wifiChange){
+      wifiRef.current?.focus();
+    } else {
+      if (wifiName != '' || confirmedWifi != ''){
+        confirmWifi(wifiName)
+      }
+    }
+  }, [wifiChange])
+
+  useEffect(()=>{
+    setSpecialTrainArr((prev)=>{
+      const temp = [...prev];
+      temp[currentTrainNum] = localAudioArr;
+      return temp
+    })
+  }, [localAudioArr])
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <ScrollView scrollEnabled={false} style={{marginTop: 68, marginLeft: 31,}}>
+        <View>
+          <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>허브 연결 와이파이</Text>
+          <View style={{display: 'flex', flexDirection: 'row',  marginTop: 23, justifyContent: 'space-between', alignSelf: 'stretch'}}>
+            { (wifiChange) ?
+              <TextInput ref={wifiRef} placeholder='MAC주소 입력' value={wifiName} onChangeText={setWifiName} onBlur={()=>{setWifiChange(false)}} style={{backgroundColor: '#ffffff', borderRadius: 11, paddingHorizontal:10, fontSize:18, fontFamily: 'JejuGothic', width:240}}>
+              </TextInput>
+            :
+              <View style={{display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
+                <Text style={{fontSize: 18,fontFamily: 'JejuGothic'}}>{confirmedWifi}</Text>
+              </View>
+            }
+            
+            <TouchableOpacity onPress={()=>{setWifiChange(true)}}>
+              <Pencil style={{marginRight: 41}}></Pencil>
+            </TouchableOpacity>
+          </View>
+          {(wifiNeeded) && <Text style={{fontSize: 10, fontFamily: 'JejuGothic', color: '#ff0000'}}>허브와 와이파이 연결을 먼저 해주세요</Text>}
+        </View>
+        <View style={{ height: 1, backgroundColor: '#ccc', marginTop: 22, marginRight: 31}} />
+        <View style={{marginTop: 26}}>
+          <View style={{display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignContent: 'center'}}>
+            <View style={{display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
+              <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>이벤트 알림 여부 설정</Text>
+            </View>
+          </View>
+          <ScrollView style={{borderRadius: 11, backgroundColor: '#ffffff', marginRight: 28, marginTop:15, paddingHorizontal: 24, paddingVertical: 20, height: 248}}>
+            {eventArr}
+          </ScrollView>
+        </View>
+        <View style={{ height: 1, backgroundColor: '#ccc', marginTop: 33, marginRight: 31, }} />
+        <View style={{marginTop: 30,}}>
+          <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>이벤트 감지 민감도</Text>
+          <View style={{display: 'flex', flexDirection: 'row',  marginTop: 28, justifyContent: 'space-between', alignSelf: 'stretch', marginRight:30}}>
+            <View style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+              <Text style={[{fontSize: 20,fontFamily: 'JejuGothic', marginRight: 10}]}>민감</Text>
+              <TouchableOpacity onPress={()=>{setSensitivity(0)}} style={{borderWidth:3, width: 20, height: 20, borderRadius: 5, borderColor: '#979797'}}></TouchableOpacity>
+              {(sensitivity==0) && <Check style={{position: 'absolute', left: 35, top: -20}}/>}
+            </View>
+            <View style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+              <Text style={{fontSize: 20,fontFamily: 'JejuGothic', marginRight: 10}}>보통</Text>
+              <TouchableOpacity onPress={()=>{setSensitivity(1)}} style={[{borderWidth:3, width: 20, height: 20, borderRadius: 5, borderColor: '#979797'}]}></TouchableOpacity>
+              {(sensitivity==1) && <Check style={{position: 'absolute', left: 35, top: -20}}/>}
+            </View>
+            <View style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+              <Text style={{fontSize: 20,fontFamily: 'JejuGothic', marginRight: 10}}>둔함</Text>
+              <TouchableOpacity onPress={()=>{setSensitivity(2)}} style={{borderWidth:3, width: 20, height: 20, borderRadius: 5, borderColor: '#979797'}}></TouchableOpacity>
+              {(sensitivity==2) && <Check style={{position: 'absolute', left: 35, top: -20}}/>}
+            </View>
+          </View>
+        </View>
+        <TouchableOpacity onPress={async ()=>{
+          const usersRef = ref(db, 'users');
+          const snap = await get(usersRef);
+          if (!snap.exists()) {
+            setWifiNeeded(true);
+          } else{
+            const v = snap.val();
+            if (confirmedWifi in v) {
+              await AsyncStorage.setItem('WIFI_BSSID', confirmedWifi);
+              setWifiNeeded(false);
+              const trainToFb: { [key: string]: any } = {}
+              eventNameArr.map(async (eventName, idx)=>{
+                trainToFb[eventName] = specialTrainArr[idx];
+                specialTrainArr[idx].forEach(async (asyncRef)=> {
+                  const storageRef = sRef(storage, `${confirmedWifi}/audio_data/${eventName}/${asyncRef.split('/')[asyncRef.split('/').length-1]}`);
+                  const res = await fetch(asyncRef)
+                  if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+                  const blob = await res.blob()
+                  uploadBytesResumable(storageRef, blob);
+                })
+              })
+
+              update(ref(db, 'users/' + confirmedWifi), {
+                eventCheckArr: eventCheckArr,
+                sensitivity: sensitivity,
+                trainedData: trainToFb,
+              });
+            } else{
+              setWifiNeeded(true);
+            }
+          }
+          }}style={{backgroundColor: '#d9d9d9', width: 187, height: 51, borderRadius: 11, marginLeft: 76, marginTop: 30, display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+          <Text style={{alignSelf: 'center', fontSize: 20, fontFamily: 'JejuGothic'}}>적용하기</Text>
+        </TouchableOpacity>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  headerImage: {
+    color: '#808080',
+    bottom: -90,
+    left: -35,
+    position: 'absolute',
+  },
   titleContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
   },
 });
