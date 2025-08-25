@@ -7,6 +7,17 @@ import { ReactElement, useContext, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Play from '../../components/ui/play.svg';
 import Stop from '../../components/ui/stop.svg';
+['현관벨', '화재경보', '유리 깨짐', '울음', '비명', '사이렌', '개 짖는 소리', '총 소리']
+const engToKor : {[key: string] : string} = {
+  "Doorbell" : '현관벨',
+  "Fire Alarm" : '화재경보',
+  "Glass Break" : '유리 깨짐',
+  "Baby Cry" : '울음',
+  "Scream" : '비명',
+  "Siren" : '사이렌',
+  "Dog Bark": '개 짖는 소리',
+  "Gunshot": '총 소리'
+}
 
 export default function HomeScreen() {
   const context = useContext(WifiContext);
@@ -53,7 +64,7 @@ export default function HomeScreen() {
         for (let event in eventData){
           const tempDict : { [key: string]: any } = {};
           tempDict['hub'] = temp[eventData[event]['hub_mac']]
-          tempDict['label'] = eventData[event]['label'];
+          tempDict['label'] = (eventData[event]['label'] in engToKor) ? engToKor[eventData[event]['label']] : eventData[event]['label'];
           tempDict['timestamp'] = eventData[event]['timestamp'];
           tempDict['event'] = event;
           eventArrTemp.push(tempDict);

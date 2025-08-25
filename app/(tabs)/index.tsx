@@ -16,9 +16,8 @@ import React, { ReactElement, useContext, useEffect, useRef, useState } from 're
 import Check from '../../components/ui/check.svg';
 import Pencil from '../../components/ui/pencil.svg';
 
-const trainArr = [678, 658, 857, 955, 237];
-const eventNameArr = ['화재경보', '울음','유리 깨짐', '비명', '현관벨',];
-
+const defaultTrainArr = [678, 658, 857, 955, 237];
+const isEnglishLetters = (s: string) => /^[A-Za-z]+$/.test(s);
 
 export default function TabTwoScreen() {
   const context = useContext(SheetRefContext);
@@ -36,12 +35,17 @@ export default function TabTwoScreen() {
   const [wifiChange, setWifiChange] = useState<boolean>(false);
   const [wifiName, setWifiName] = useState<string>('');
   const wifiRef = useRef<TextInput>(null);
+  const eventAddRef = useRef<TextInput>(null);
   const [sensitivity, setSensitivity] = useState<number>(1);
   const [eventArr, setEventArr] = useState<ReactElement[]>([]);
-  const [specialTrainArr, setSpecialTrainArr] = useState<string[][]>([[], [], [], [], []]);
+  const [specialTrainArr, setSpecialTrainArr] = useState<string[][]>([]);
   const [currentTrainNum, setCurrentTrainNum] = useState<number>(-1);
-  const [eventCheckArr, setEventCheckArr] = useState<boolean[]>([false, false, false, false, false,]);
+  const [eventCheckArr, setEventCheckArr] = useState<boolean[]>([]);
   const [wifiNeeded, setWifiNeeded] = useState<boolean>(false);
+  const [trainArr, setTrainArr] = useState<number[]>(defaultTrainArr);
+  const [eventNameArr, setEventNameArr] = useState<string[]>(['현관벨', '화재경보', '유리 깨짐', '울음', '비명', '사이렌', '개 짖는 소리', '총 소리']);
+  const [addEvent, setAddEvent] = useState<boolean>(false);
+  const [newEvent, setNewEvent] = useState<string>('');
 
   useEffect(()=>{
     async function getWifi() {
@@ -61,6 +65,19 @@ export default function TabTwoScreen() {
     }
     getWifi();
   }, [])
+
+  useEffect(() => {
+    const base = [...defaultTrainArr];
+    if (eventNameArr.length > defaultTrainArr.length) {
+      // 부족한 길이만큼 0 채우기
+      const diff = eventNameArr.length - defaultTrainArr.length;
+      const zeros = Array(diff).fill(0);
+      setTrainArr([...base, ...zeros]);
+    } else {
+      // eventNameArr가 더 짧거나 같으면 그대로
+      setTrainArr(base);
+    }
+  }, [eventNameArr]);
 
   useEffect(()=>{
     async function loadSpecialTrain() {
@@ -97,6 +114,9 @@ export default function TabTwoScreen() {
       }
       if ('sensitivity' in userData){
         setSensitivity(userData['sensitivity']);
+      }
+      if ('eventNameArr' in userData){
+        setEventNameArr(userData['eventNameArr']);
       }
 
       // Expo Push Token 발급
@@ -175,6 +195,7 @@ export default function TabTwoScreen() {
         if (wifiName in v) {
           setWifiNeeded(false);
           setConfirmedWifi(wifiName);
+          await AsyncStorage.setItem('WIFI_BSSID', confirmedWifi);
         } else{
           setWifiNeeded(true); 
           setWifiName(confirmedWifi);
@@ -205,7 +226,7 @@ export default function TabTwoScreen() {
           <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>허브 연결 와이파이</Text>
           <View style={{display: 'flex', flexDirection: 'row',  marginTop: 23, justifyContent: 'space-between', alignSelf: 'stretch'}}>
             { (wifiChange) ?
-              <TextInput ref={wifiRef} placeholder='MAC주소 입력' value={wifiName} onChangeText={setWifiName} onBlur={()=>{setWifiChange(false)}} style={{backgroundColor: '#ffffff', borderRadius: 11, paddingHorizontal:10, fontSize:18, fontFamily: 'JejuGothic', width:240}}>
+              <TextInput ref={wifiRef} placeholder='MAC주소 입력' value={wifiName} onChangeText={setWifiName} onBlur={()=>{setWifiChange(false);}} style={{backgroundColor: '#ffffff', borderRadius: 11, paddingHorizontal:10, fontSize:18, fontFamily: 'JejuGothic', width:240}}>
               </TextInput>
             :
               <View style={{display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
@@ -225,6 +246,18 @@ export default function TabTwoScreen() {
             <View style={{display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
               <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>이벤트 알림 여부 설정</Text>
             </View>
+            {
+              (addEvent) && 
+              <TextInput ref={eventAddRef} placeholder='영어로 작성' value={newEvent} onChangeText={setNewEvent} onBlur={()=>{setWifiChange(false)}} style={{backgroundColor: '#ffffff', borderRadius: 11, paddingHorizontal:10, fontSize:18, fontFamily: 'JejuGothic', width:110, marginHorizontal:10}}/>
+            }
+            <TouchableOpacity style={{marginRight: 50}} onPress={()=>{
+              if (newEvent != '' && isEnglishLetters(newEvent)) {
+                setEventNameArr((prev)=>[...prev, newEvent]);
+              }
+              setNewEvent('');
+              setAddEvent(!addEvent);}}>
+              <Text style={{fontSize: 30,fontFamily: 'JejuGothic',}}>+</Text>
+            </TouchableOpacity>
           </View>
           <ScrollView style={{borderRadius: 11, backgroundColor: '#ffffff', marginRight: 28, marginTop:15, paddingHorizontal: 24, paddingVertical: 20, height: 248}}>
             {eventArr}
@@ -260,6 +293,7 @@ export default function TabTwoScreen() {
             const v = snap.val();
             if (confirmedWifi in v) {
               await AsyncStorage.setItem('WIFI_BSSID', confirmedWifi);
+              
               setWifiNeeded(false);
               const trainToFb: { [key: string]: any } = {}
               eventNameArr.map(async (eventName, idx)=>{
@@ -277,6 +311,7 @@ export default function TabTwoScreen() {
                 eventCheckArr: eventCheckArr,
                 sensitivity: sensitivity,
                 trainedData: trainToFb,
+                eventNameArr: eventNameArr,
               });
             } else{
               setWifiNeeded(true);
