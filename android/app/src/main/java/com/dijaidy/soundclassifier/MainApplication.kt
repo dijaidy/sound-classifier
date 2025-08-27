@@ -1,4 +1,4 @@
-package com.soundclassifier
+package com.dijaidy.soundclassifier
 
 import android.app.Application
 import android.content.res.Configuration
