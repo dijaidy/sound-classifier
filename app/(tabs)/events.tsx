@@ -1,13 +1,14 @@
 import { WifiContext } from '@/components/wifiContext';
 import { db, storage } from '@/firebase/firebase';
+import { Picker } from '@react-native-picker/picker';
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { get, ref, remove, set } from 'firebase/database';
+import { get, ref, remove, update } from 'firebase/database';
 import { getDownloadURL, getMetadata, ref as sRef, StorageReference } from 'firebase/storage';
 import { ReactElement, useContext, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Play from '../../components/ui/play.svg';
 import Stop from '../../components/ui/stop.svg';
-['현관벨', '화재경보', '유리 깨짐', '울음', '비명', '사이렌', '개 짖는 소리', '총 소리']
+
 const engToKor : {[key: string] : string} = {
   "Doorbell" : '현관벨',
   "Fire Alarm" : '화재경보',
@@ -26,7 +27,7 @@ export default function HomeScreen() {
   throw new Error('SheetRefContext must be used within a Provider');
   }
 
-  const { confirmedWifi, setConfirmedWifi } = context;
+  const { confirmedWifi, setConfirmedWifi, eventNameArr, setEventNameArr } = context;
 
   const [selected, setSelected] = useState<number>(-1);
   const [audioPlay, setAudioPlay] = useState<boolean>(false);
@@ -36,6 +37,8 @@ export default function HomeScreen() {
   const [eventArr, setEventArr] = useState<{ [key: string] : any }[]>([]);
   const [buttonArr, setButtonArr] = useState<ReactElement[]>([]);
   const [isAudioExist, setIsAudioExist] = useState<boolean>(false);
+  const [selectedEvent, setSelectedEvent] = useState<string>("");
+
 
   const prepareAudioPlay = async () => {
         try {
@@ -53,6 +56,7 @@ export default function HomeScreen() {
         const userData = snap.val();
         const eventData = userData['events']
         const hubData = userData['hubs']
+        
 
         const temp : { [key: string]: any } = {}
         for (let hub in hubData){
@@ -60,6 +64,7 @@ export default function HomeScreen() {
         }
         setIdToHub(temp);
 
+        
         const eventArrTemp = [];
         for (let event in eventData){
           const tempDict : { [key: string]: any } = {};
@@ -69,7 +74,9 @@ export default function HomeScreen() {
           tempDict['event'] = event;
           eventArrTemp.push(tempDict);
         }
-        setEventArr(eventArrTemp);
+        const eventArrTemp2: any[] = [];
+
+        setEventArr(eventArrTemp.reverse());
       }
     }
     loadAudio()
@@ -171,31 +178,40 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           }
-          <View style={{display: 'flex', flexDirection: 'row', marginLeft: 24, marginTop: 46}}>
+          <View style={{display: 'flex', flexDirection: 'row', marginLeft: 24, marginTop: 46, justifyContent: 'space-between'}}>
             <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>{eventArr[selected]['timestamp'].split(' ')[0]}</Text>
-            <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797', marginLeft: 30}}>{eventArr[selected]['timestamp'].split(' ')[1]}</Text>
+            <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797', marginRight: 70}}>{eventArr[selected]['timestamp'].split(' ')[1]}</Text>
           </View>
-          <TouchableOpacity style={{alignSelf:'center', flexDirection: 'row', justifyContent: 'center', width: 200, height: 70, borderRadius: 20, backgroundColor: '#66ACF7', marginTop: 20, marginRight: 35}} onPress={async ()=>{
-            await remove(ref(db, `users/${confirmedWifi}/events/${eventArr[selected].event}`));
-            
-            const feedbackRef = ref(db, `users/${confirmedWifi}/feedback`);
-            const snap = await get(feedbackRef);
-                      if (!snap.exists()) {
-                        set(feedbackRef, [eventArr[selected].event])
-                      } else {
-                        const val = snap.val();
-                        val.push(eventArr[selected].event)
-                        set(feedbackRef, val);
-                      }
-            
-            setEventArr((prev)=>{
-              const temp = [...prev];
-              temp.splice(selected, 1);
-              return temp;
-            })
-            setSelected(-1);
-          }}><Text style={{color: '#ffffff', fontFamily: 'JejuGothic', fontSize: 20, alignSelf: 'center'}}>
-            이벤트 종류 불일치</Text></TouchableOpacity>
+          <View style={{display: 'flex', flexDirection: 'row', marginLeft: 24, marginTop: 46, justifyContent: 'space-between'}}>
+            <Picker
+              selectedValue={selectedEvent}
+              style={{ height: 50, width: 200, marginLeft:-40, marginTop: -40}}
+              onValueChange={(itemValue) => setSelectedEvent(itemValue)}
+            >
+              {eventNameArr.map((name, idx) => (
+                <Picker.Item label={name} value={name} key={idx} />
+              ))}
+            </Picker>
+
+            <TouchableOpacity style={{alignSelf:'center', flexDirection: 'column', justifyContent: 'center', width: 150, height: 70, borderRadius: 20, backgroundColor: '#66ACF7', marginTop: 35, marginRight: 20, }} onPress={async ()=>{
+              await remove(ref(db, `users/${confirmedWifi}/events/${eventArr[selected].event}`));
+              
+              const feedbackRef = ref(db, `users/${confirmedWifi}/feedback`);
+              update(feedbackRef, {[eventArr[selected].event]: {correctLabel: selectedEvent}});
+              
+              setEventArr((prev)=>{
+                const temp = [...prev];
+                temp.splice(selected, 1);
+                return temp;
+              })
+              setSelected(-1);
+            }}>
+              <Text style={{color: '#ffffff', fontFamily: 'JejuGothic', fontSize: 20, alignSelf: 'center'}}>
+              이벤트 종류</Text>
+              <Text style={{color: '#ffffff', fontFamily: 'JejuGothic', fontSize: 20, alignSelf: 'center', marginTop: 5}}>
+              불일치</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       }
     </View>

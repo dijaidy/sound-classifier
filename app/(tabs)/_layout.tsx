@@ -115,6 +115,8 @@ export default function TabLayout() {
   const [audioOrder, setAudioOrder] = useState<number>(0);
   const [localAudioArr, setLocalAudioArr] = useState<string[]>([]);
   const [confirmedWifi, setConfirmedWifi] = useState<string>('');
+  const [eventNameArr, setEventNameArr] = useState<string[]>(['현관벨', '화재경보', '유리 깨짐', '울음', '비명', '사이렌', '개 짖는 소리', '총 소리']);
+  
 
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder);
@@ -197,7 +199,7 @@ export default function TabLayout() {
   return (
     <SheetRefContext.Provider value={{bottomSheetModalRef, localAudioArr, setLocalAudioArr}}>
       <BottomSheetModalProvider>
-        <WifiContext.Provider value={{confirmedWifi, setConfirmedWifi}}>
+        <WifiContext.Provider value={{confirmedWifi, setConfirmedWifi, eventNameArr, setEventNameArr}}>
           <Tabs
             screenOptions={{
               tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,

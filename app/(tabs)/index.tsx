@@ -30,7 +30,7 @@ export default function TabTwoScreen() {
   }
 
   const { bottomSheetModalRef, localAudioArr, setLocalAudioArr } = context;
-  const { confirmedWifi, setConfirmedWifi } = context2;
+  const { confirmedWifi, setConfirmedWifi, eventNameArr, setEventNameArr } = context2;
 
   const [wifiChange, setWifiChange] = useState<boolean>(false);
   const [wifiName, setWifiName] = useState<string>('');
@@ -43,7 +43,6 @@ export default function TabTwoScreen() {
   const [eventCheckArr, setEventCheckArr] = useState<boolean[]>([]);
   const [wifiNeeded, setWifiNeeded] = useState<boolean>(false);
   const [trainArr, setTrainArr] = useState<number[]>(defaultTrainArr);
-  const [eventNameArr, setEventNameArr] = useState<string[]>(['현관벨', '화재경보', '유리 깨짐', '울음', '비명', '사이렌', '개 짖는 소리', '총 소리']);
   const [addEvent, setAddEvent] = useState<boolean>(false);
   const [newEvent, setNewEvent] = useState<string>('');
 
@@ -268,7 +267,7 @@ export default function TabTwoScreen() {
           <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>이벤트 감지 민감도</Text>
           <View style={{display: 'flex', flexDirection: 'row',  marginTop: 28, justifyContent: 'space-between', alignSelf: 'stretch', marginRight:30}}>
             <View style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
-              <Text style={[{fontSize: 20,fontFamily: 'JejuGothic', marginRight: 10}]}>민감</Text>
+              <Text style={[{fontSize: 20,fontFamily: 'JejuGothic', marginRight: 10}]}>둔함</Text>
               <TouchableOpacity onPress={()=>{setSensitivity(0)}} style={{borderWidth:3, width: 20, height: 20, borderRadius: 5, borderColor: '#979797'}}></TouchableOpacity>
               {(sensitivity==0) && <Check style={{position: 'absolute', left: 35, top: -20}}/>}
             </View>
@@ -278,7 +277,7 @@ export default function TabTwoScreen() {
               {(sensitivity==1) && <Check style={{position: 'absolute', left: 35, top: -20}}/>}
             </View>
             <View style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
-              <Text style={{fontSize: 20,fontFamily: 'JejuGothic', marginRight: 10}}>둔함</Text>
+              <Text style={{fontSize: 20,fontFamily: 'JejuGothic', marginRight: 10}}>민감</Text>
               <TouchableOpacity onPress={()=>{setSensitivity(2)}} style={{borderWidth:3, width: 20, height: 20, borderRadius: 5, borderColor: '#979797'}}></TouchableOpacity>
               {(sensitivity==2) && <Check style={{position: 'absolute', left: 35, top: -20}}/>}
             </View>
