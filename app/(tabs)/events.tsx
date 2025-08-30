@@ -10,23 +10,23 @@ import Play from '../../components/ui/play.svg';
 import Stop from '../../components/ui/stop.svg';
 const engToKor : {[key: string] : string} = {
   "Doorbell" : '현관벨',
-  "Fire Alarm" : '화재경보',
-  "Glass Break" : '유리 깨짐',
-  "Baby Cry" : '울음',
+  "Fire_Alarm" : '화재경보',
+  "Glass_Break" : '유리 깨짐',
+  "Baby_Cry" : '울음',
   "Scream" : '비명',
   "Siren" : '사이렌',
-  "Dog Bark": '개 짖는 소리',
+  "Dog_Bark": '개 짖는 소리',
   "Gunshot": '총 소리'
 }
 
 const korToEng: { [key: string]: string } = {
   "현관벨": "Doorbell",
-  "화재경보": "Fire Alarm",
-  "유리 깨짐": "Glass Break",
-  "울음": "Baby Cry",
+  "화재경보": "Fire_Alarm",
+  "유리 깨짐": "Glass_Break",
+  "울음": "Baby_Cry",
   "비명": "Scream",
   "사이렌": "Siren",
-  "개 짖는 소리": "Dog Bark",
+  "개 짖는 소리": "Dog_Bark",
   "총 소리": "Gunshot",
 };
 
