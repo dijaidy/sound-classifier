@@ -5,5 +5,7 @@ import React from 'react';
 export const WifiContext =
   React.createContext<{
     confirmedWifi: string;
-    setConfirmedWifi: React.Dispatch<React.SetStateAction<string>>
+    setConfirmedWifi: React.Dispatch<React.SetStateAction<string>>;
+    eventNameArr: string[];
+    setEventNameArr: React.Dispatch<React.SetStateAction<string[]>>;
   }|null>(null);

@@ -12,9 +12,12 @@
       "supportsTablet": true,
       "infoPlist": {
         "UIBackgroundModes": [
+          "audio",
           "audio"
-        ]
-      }
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.dijaidy.soundclassifier"
     },
     "android": {
       "adaptiveIcon": {
