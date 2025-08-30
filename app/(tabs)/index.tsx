@@ -1,5 +1,3 @@
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
 import { SheetRefContext } from '@/components/bottomSheetModalRef';
 import { Collapsible } from '@/components/Collapsible';
 import { WifiContext } from '@/components/wifiContext';
@@ -9,15 +7,37 @@ import {
   AudioModule,
   setAudioModeAsync
 } from 'expo-audio';
+import Constants from "expo-constants";
 import * as Notifications from 'expo-notifications';
 import { get, ref, set, update } from 'firebase/database';
 import { ref as sRef, uploadBytesResumable } from 'firebase/storage';
 import React, { ReactElement, useContext, useEffect, useRef, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Check from '../../components/ui/check.svg';
 import Pencil from '../../components/ui/pencil.svg';
 
 const defaultTrainArr = [678, 658, 857, 955, 237];
 const isEnglishLetters = (s: string) => /^[A-Za-z]+$/.test(s);
+const engToKor : {[key: string] : string} = {
+  "Doorbell" : '현관벨',
+  "Fire Alarm" : '화재경보',
+  "Glass Break" : '유리 깨짐',
+  "Baby Cry" : '울음',
+  "Scream" : '비명',
+  "Siren" : '사이렌',
+  "Dog Bark": '개 짖는 소리',
+  "Gunshot": '총 소리'
+}
+const korToEng: { [key: string]: string } = {
+  "현관벨": "Doorbell",
+  "화재경보": "Fire Alarm",
+  "유리 깨짐": "Glass Break",
+  "울음": "Baby Cry",
+  "비명": "Scream",
+  "사이렌": "Siren",
+  "개 짖는 소리": "Dog Bark",
+  "총 소리": "Gunshot",
+};
 
 export default function TabTwoScreen() {
   const context = useContext(SheetRefContext);
@@ -119,8 +139,16 @@ export default function TabTwoScreen() {
         setEventNameArr(userData['eventNameArr']);
       }
 
+            // 2) projectId 필수 (SDK 49+)
+      const projectId =
+        Constants?.expoConfig?.extra?.eas?.projectId ??
+        Constants?.easConfig?.projectId;
+      if (!projectId) {
+        throw new Error("EAS projectId가 없습니다. app.json/app.config.ts 확인");
+      }
+
       // Expo Push Token 발급
-      const data: Notifications.ExpoPushToken  = await Notifications.getExpoPushTokenAsync() // iOS=APNs, Android=FCM
+      const data: Notifications.ExpoPushToken  = await Notifications.getExpoPushTokenAsync( {projectId} ) // iOS=APNs, Android=FCM
       
       await set(ref(db, `users/${confirmedWifi}/pushTokens`), data['data']);
     }
@@ -299,7 +327,7 @@ export default function TabTwoScreen() {
               eventNameArr.map(async (eventName, idx)=>{
                 trainToFb[eventName] = specialTrainArr[idx];
                 specialTrainArr[idx].forEach(async (asyncRef)=> {
-                  const storageRef = sRef(storage, `${confirmedWifi}/audio_data/${eventName}/${asyncRef.split('/')[asyncRef.split('/').length-1]}`);
+                  const storageRef = sRef(storage, `${confirmedWifi}/audio_data/${korToEng[eventName]}/${asyncRef.split('/')[asyncRef.split('/').length-1]}`);
                   const res = await fetch(asyncRef)
                   if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
                   const blob = await res.blob()

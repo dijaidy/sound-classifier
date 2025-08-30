@@ -7,7 +7,6 @@ import { ReactElement, useContext, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Play from '../../components/ui/play.svg';
 import Stop from '../../components/ui/stop.svg';
-['현관벨', '화재경보', '유리 깨짐', '울음', '비명', '사이렌', '개 짖는 소리', '총 소리']
 const engToKor : {[key: string] : string} = {
   "Doorbell" : '현관벨',
   "Fire Alarm" : '화재경보',
