@@ -19,6 +19,17 @@ const engToKor : {[key: string] : string} = {
   "Gunshot": '총 소리'
 }
 
+const korToEng: { [key: string]: string } = {
+  "현관벨": "Doorbell",
+  "화재경보": "Fire Alarm",
+  "유리 깨짐": "Glass Break",
+  "울음": "Baby Cry",
+  "비명": "Scream",
+  "사이렌": "Siren",
+  "개 짖는 소리": "Dog Bark",
+  "총 소리": "Gunshot",
+};
+
 export default function HomeScreen() {
   const context = useContext(WifiContext);
 
@@ -196,7 +207,7 @@ export default function HomeScreen() {
               await remove(ref(db, `users/${confirmedWifi}/events/${eventArr[selected].event}`));
               
               const feedbackRef = ref(db, `users/${confirmedWifi}/feedback`);
-              update(feedbackRef, {[eventArr[selected].event]: {correctLabel: selectedEvent}});
+              update(feedbackRef, {[eventArr[selected].event]: {correctLabel: korToEng[selectedEvent]}});
               
               setEventArr((prev)=>{
                 const temp = [...prev];
