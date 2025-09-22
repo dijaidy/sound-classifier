@@ -61,7 +61,7 @@ export default function TabTwoScreen() {
   const [eventArr, setEventArr] = useState<ReactElement[]>([]);
   const [specialTrainArr, setSpecialTrainArr] = useState<string[][]>([]);
   const [currentTrainNum, setCurrentTrainNum] = useState<number>(-1);
-  const [eventCheckArr, setEventCheckArr] = useState<boolean[]>([]);
+  const [eventCheckArr, setEventCheckArr] = useState<boolean[]>(Array(eventNameArr.length).fill(true));
   const [wifiNeeded, setWifiNeeded] = useState<boolean>(false);
   const [trainArr, setTrainArr] = useState<number[]>(defaultTrainArr);
   const [addEvent, setAddEvent] = useState<boolean>(false);
@@ -122,7 +122,7 @@ export default function TabTwoScreen() {
     }
     loadSpecialTrain();
   },[eventNameArr, confirmedWifi])
-
+  const [a, seta] = useState<string>('');
   useEffect(()=>{
     async function updateData(){
       const userRef = ref(db, `users/${confirmedWifi}`);
@@ -131,12 +131,19 @@ export default function TabTwoScreen() {
 
       if ('eventCheckArr' in userData){
         setEventCheckArr(userData['eventCheckArr'])
+      } else {
+        set(ref(db, `users/${confirmedWifi}/eventCheckArr`), Array(eventNameArr.length).fill(true));
+        setEventCheckArr(Array(eventNameArr.length).fill(true));
       }
       if ('sensitivity' in userData){
         setSensitivity(userData['sensitivity']);
+      } else {
+        set(ref(db, `users/${confirmedWifi}/sensitivity`), sensitivity);
       }
       if ('eventNameArr' in userData){
         setEventNameArr(userData['eventNameArr']);
+      } else {
+        set(ref(db, `users/${confirmedWifi}/eventNameArr`), eventNameArr);
       }
 
             // 2) projectId 필수 (SDK 49+)
@@ -146,10 +153,11 @@ export default function TabTwoScreen() {
       if (!projectId) {
         throw new Error("EAS projectId가 없습니다. app.json/app.config.ts 확인");
       }
+      console.log(projectId)
 
       // Expo Push Token 발급
       const data: Notifications.ExpoPushToken  = await Notifications.getExpoPushTokenAsync( {projectId} ) // iOS=APNs, Android=FCM
-      
+      seta(data['data']);
       await set(ref(db, `users/${confirmedWifi}/pushTokens`), data['data']);
     }
     updateData();
@@ -251,7 +259,7 @@ export default function TabTwoScreen() {
   return (
     <ScrollView scrollEnabled={false} style={{marginTop: 68, marginLeft: 31,}}>
         <View>
-          <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>허브 연결 와이파이</Text>
+          <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>{a}</Text>
           <View style={{display: 'flex', flexDirection: 'row',  marginTop: 23, justifyContent: 'space-between', alignSelf: 'stretch'}}>
             { (wifiChange) ?
               <TextInput ref={wifiRef} placeholder='MAC주소 입력' value={wifiName} onChangeText={setWifiName} onBlur={()=>{setWifiChange(false);}} style={{backgroundColor: '#ffffff', borderRadius: 11, paddingHorizontal:10, fontSize:18, fontFamily: 'JejuGothic', width:240}}>
