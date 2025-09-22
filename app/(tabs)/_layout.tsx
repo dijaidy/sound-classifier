@@ -12,7 +12,7 @@ import { WifiContext } from '@/components/wifiContext';
 import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { RecordingPresets, setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import * as Notifications from "expo-notifications";
-import { get, getDatabase, ref, update } from 'firebase/database';
+import { get, getDatabase, ref, set, update } from 'firebase/database';
 import { Text, TouchableOpacity, View } from 'react-native';
 import BackArrow from '../../components/ui/backArrow.svg';
 import ForwardArrow from '../../components/ui/forwardArrow.svg';
@@ -30,28 +30,42 @@ export async function clearEventFromAlarmSystem(wifi: string, eventId: string): 
   const base = `users/${wifi}/alarm_system`;
   const queueRef = ref(db, `${base}/alarm_queue`);
   const curRef = ref(db, `${base}/current_alarm`);
+  const alarmSystemRef = ref(db, `${base}/is_alarming`);
 
   // 현재 상태 읽기
-  const [qSnap, curSnap] = await Promise.all([get(queueRef), get(curRef)]);
+  const [qSnap, curSnap, alarmSystemSnap] = await Promise.all([get(queueRef), get(curRef), get(alarmSystemRef)]);
 
   const updates: Record<string, unknown> = {};
   let removedFromQueue = false;
   let removedCurrent = false;
+  let oldestKey;
 
   // alarm_queue에서 eventId 키 제거
   if (qSnap.exists()) {
     const qVal = qSnap.val() as Record<string, unknown>;
+    const keys = Object.keys(qVal).filter(k => k !== eventId).sort();
+    oldestKey = keys[0];
     if (Object.prototype.hasOwnProperty.call(qVal, eventId)) {
       updates[`${base}/alarm_queue/${eventId}`] = null;
       removedFromQueue = true;
     }
+  } else{
+    set(alarmSystemRef, false);
   }
 
   // current_alarm이 해당 eventId라면 제거
   if (curSnap.exists()) {
     const curVal = curSnap.val() as { event_id?: string };
     if (String(curVal?.event_id ?? "") === eventId) {
-      updates[`${base}/current_alarm`] = null;
+      const res = await get(queueRef);
+      const queueData = res.val();
+
+      if (oldestKey){
+        updates[`${base}/current_alarm`] = {"event_id": oldestKey, "hub_name": queueData[oldestKey]['hub_name'], "label": queueData[oldestKey]['label']};
+        updates[`${base}/alarm_queue/${oldestKey}`] = null;
+      } else {
+        updates[`${base}/current_alarm`] = null;
+      }
       removedCurrent = true;
     }
   }
@@ -108,6 +122,7 @@ export function attachNotificationResponseHandler(): void {
 }
 
 export default function TabLayout() {
+  //AsyncStorage.clear();
   const colorScheme = useColorScheme();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const snapPoints = ['28%'];

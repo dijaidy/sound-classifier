@@ -2,7 +2,7 @@ import { WifiContext } from '@/components/wifiContext';
 import { db, storage } from '@/firebase/firebase';
 import { Picker } from '@react-native-picker/picker';
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { get, ref, remove, update } from 'firebase/database';
+import { get, onValue, ref, remove, update } from 'firebase/database';
 import { getDownloadURL, getMetadata, ref as sRef, StorageReference } from 'firebase/storage';
 import { ReactElement, useContext, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -48,6 +48,7 @@ export default function HomeScreen() {
   const [buttonArr, setButtonArr] = useState<ReactElement[]>([]);
   const [isAudioExist, setIsAudioExist] = useState<boolean>(false);
   const [selectedEvent, setSelectedEvent] = useState<string>("");
+  let unsubscribe: ()=> void
 
 
   const prepareAudioPlay = async () => {
@@ -57,38 +58,37 @@ export default function HomeScreen() {
           console.warn('audio mode 설정 실패:', e);
         }
       };
+  async function loadAudio(){
+    const userRef = ref(db, `users/${confirmedWifi}`)
+    const snap = await get(userRef);
+    if (snap.exists()){
+      const userData = snap.val();
+      const eventData = userData['events']
+      const hubData = userData['hubs']
+      
 
-  useEffect(()=>{
-    async function loadAudio(){
-      const userRef = ref(db, `users/${confirmedWifi}`)
-      const snap = await get(userRef);
-      if (snap.exists()){
-        const userData = snap.val();
-        const eventData = userData['events']
-        const hubData = userData['hubs']
-        
-
-        const temp : { [key: string]: any } = {}
-        for (let hub in hubData){
-          temp[hub] = hubData[hub]['name'];
-        }
-        setIdToHub(temp);
-
-        
-        const eventArrTemp = [];
-        for (let event in eventData){
-          const tempDict : { [key: string]: any } = {};
-          tempDict['hub'] = temp[eventData[event]['hub_mac']]
-          tempDict['label'] = (eventData[event]['label'] in engToKor) ? engToKor[eventData[event]['label']] : eventData[event]['label'];
-          tempDict['timestamp'] = eventData[event]['timestamp'];
-          tempDict['event'] = event;
-          eventArrTemp.push(tempDict);
-        }
-        const eventArrTemp2: any[] = [];
-
-        setEventArr(eventArrTemp.reverse());
+      const temp : { [key: string]: any } = {}
+      for (let hub in hubData){
+        temp[hub] = hubData[hub]['name'];
       }
+      setIdToHub(temp);
+
+      
+      const eventArrTemp = [];
+      for (let event in eventData){
+        const tempDict : { [key: string]: any } = {};
+        tempDict['hub'] = temp[eventData[event]['hub_mac']]
+        tempDict['label'] = (eventData[event]['label'] in engToKor) ? engToKor[eventData[event]['label']] : eventData[event]['label'];
+        tempDict['timestamp'] = eventData[event]['timestamp'];
+        tempDict['event'] = event;
+        eventArrTemp.push(tempDict);
+      }
+      const eventArrTemp2: any[] = [];
+
+      setEventArr(eventArrTemp.reverse());
     }
+  }
+  useEffect(()=>{
     loadAudio()
   }, [])
 
@@ -140,6 +140,16 @@ export default function HomeScreen() {
     audioPrepare();
   }, [selected])
 
+  useEffect(()=>{
+    loadAudio()
+
+    const eventRef = ref(db, `users/${confirmedWifi}/events`);
+    unsubscribe = onValue(eventRef, (snapshot) => {
+      loadAudio()
+    });
+  }, [confirmedWifi])
+
+  
 
   return (
     <View style={{marginTop: 88, marginLeft: 31,}}>

@@ -259,7 +259,7 @@ export default function TabTwoScreen() {
   return (
     <ScrollView scrollEnabled={false} style={{marginTop: 68, marginLeft: 31,}}>
         <View>
-          <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>{a}</Text>
+          <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>허브 연결 와이파이</Text>
           <View style={{display: 'flex', flexDirection: 'row',  marginTop: 23, justifyContent: 'space-between', alignSelf: 'stretch'}}>
             { (wifiChange) ?
               <TextInput ref={wifiRef} placeholder='MAC주소 입력' value={wifiName} onChangeText={setWifiName} onBlur={()=>{setWifiChange(false);}} style={{backgroundColor: '#ffffff', borderRadius: 11, paddingHorizontal:10, fontSize:18, fontFamily: 'JejuGothic', width:240}}>
@@ -282,18 +282,7 @@ export default function TabTwoScreen() {
             <View style={{display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
               <Text style={{fontSize: 20,fontFamily: 'JejuGothic', color: '#979797'}}>이벤트 알림 여부 설정</Text>
             </View>
-            {
-              (addEvent) && 
-              <TextInput ref={eventAddRef} placeholder='영어로 작성' value={newEvent} onChangeText={setNewEvent} onBlur={()=>{setWifiChange(false)}} style={{backgroundColor: '#ffffff', borderRadius: 11, paddingHorizontal:10, fontSize:18, fontFamily: 'JejuGothic', width:110, marginHorizontal:10}}/>
-            }
-            <TouchableOpacity style={{marginRight: 50}} onPress={()=>{
-              if (newEvent != '' && isEnglishLetters(newEvent)) {
-                setEventNameArr((prev)=>[...prev, newEvent]);
-              }
-              setNewEvent('');
-              setAddEvent(!addEvent);}}>
-              <Text style={{fontSize: 30,fontFamily: 'JejuGothic',}}>+</Text>
-            </TouchableOpacity>
+
           </View>
           <ScrollView style={{borderRadius: 11, backgroundColor: '#ffffff', marginRight: 28, marginTop:15, paddingHorizontal: 24, paddingVertical: 20, height: 248}}>
             {eventArr}
